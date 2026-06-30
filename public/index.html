@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Whisperia — Question & Answer Platform</title>
+  <meta name="description" content="Whisperia is a community-driven Q&A platform where you can ask questions, share knowledge, and learn together.">
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+
+  <div id="navbar"></div>
+
+  <main class="page-content" style="position:relative;z-index:1">
+    <!-- Hero Section -->
+    <section style="text-align:center;padding:80px 24px 40px">
+      <div style="max-width:700px;margin:0 auto">
+        <h1 style="font-size:3.2rem;font-weight:800;line-height:1.1;margin-bottom:16px">
+          <span class="gradient-text">Ask. Answer.</span><br>
+          <span style="color:var(--color-text)">Grow Together.</span>
+        </h1>
+        <p style="color:var(--color-muted);font-size:1.1rem;line-height:1.7;margin-bottom:32px">
+          Whisperia is a community-driven platform where curious minds ask questions and knowledgeable peers share answers. Join the conversation.
+        </p>
+        <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+          <a href="/questions.html" class="btn-primary" style="padding:14px 32px;font-size:1rem;text-decoration:none">Browse Questions</a>
+          <a href="/register.html" class="btn-secondary" style="padding:14px 32px;font-size:1rem;text-decoration:none" id="hero-cta">Join Whisperia</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Stats Section -->
+    <section style="max-width:900px;margin:0 auto 60px;padding:0 24px">
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px" id="stats-grid">
+        <div class="glass-card-static stat-card"><div class="stat-number" id="stat-questions">—</div><div class="stat-label">Questions</div></div>
+        <div class="glass-card-static stat-card"><div class="stat-number" id="stat-answers">—</div><div class="stat-label">Answers</div></div>
+        <div class="glass-card-static stat-card"><div class="stat-number" id="stat-users">—</div><div class="stat-label">Members</div></div>
+        <div class="glass-card-static stat-card"><div class="stat-number" id="stat-votes">—</div><div class="stat-label">Votes</div></div>
+      </div>
+    </section>
+
+    <!-- Recent Questions -->
+    <section style="max-width:1200px;margin:0 auto 60px;padding:0 24px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
+        <h2 style="font-size:1.5rem;font-weight:700">Recent Questions</h2>
+        <a href="/questions.html" class="btn-ghost" style="color:var(--color-primary)">View All →</a>
+      </div>
+      <div id="recent-questions" style="display:grid;gap:16px">
+        <div class="loading-overlay"><div class="spinner"></div></div>
+      </div>
+    </section>
+
+    <!-- Categories Section -->
+    <section style="max-width:1200px;margin:0 auto 60px;padding:0 24px">
+      <h2 style="font-size:1.5rem;font-weight:700;margin-bottom:24px">Browse by Category</h2>
+      <div id="categories-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px">
+        <div class="loading-overlay"><div class="spinner"></div></div>
+      </div>
+    </section>
+
+    <!-- Top Contributors -->
+    <section style="max-width:1200px;margin:0 auto 60px;padding:0 24px">
+      <h2 style="font-size:1.5rem;font-weight:700;margin-bottom:24px">Top Contributors</h2>
+      <div id="contributors" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">
+        <div class="loading-overlay"><div class="spinner"></div></div>
+      </div>
+    </section>
+  </main>
+
+  <div id="footer"></div>
+
+  <script src="/js/app.js"></script>
+  <script src="/js/components/navbar.js"></script>
+  <script src="/js/components/footer.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      renderNavbar();
+      renderFooter();
+
+      const user = await getCurrentUser();
+      if (user) {
+        const cta = document.getElementById('hero-cta');
+        if (cta) { cta.href = '/ask.html'; cta.textContent = '✦ Ask a Question'; }
+      }
+
+      // Load recent questions
+      try {
+        const data = await api('/questions?limit=6');
+        const container = document.getElementById('recent-questions');
+        if (data.questions.length === 0) {
+          container.innerHTML = '<div class="empty-state"><h3>No questions yet</h3><p>Be the first to ask!</p></div>';
+        } else {
+          container.innerHTML = data.questions.map(q => `
+            <a href="/question-detail.html?id=${q.id}" class="glass-card" style="padding:20px 24px;text-decoration:none;display:block">
+              <div style="display:flex;align-items:start;gap:16px">
+                ${createAvatar(q.author, 36)}
+                <div style="flex:1;min-width:0">
+                  <h3 style="font-size:1.05rem;font-weight:600;color:var(--color-text);margin-bottom:6px">${escapeHtml(q.title)}</h3>
+                  <p style="color:var(--color-muted);font-size:0.85rem;margin-bottom:10px">${escapeHtml(truncate(q.description, 120))}</p>
+                  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+                    <span style="color:var(--color-muted);font-size:0.8rem">${q.author} • ${formatDate(q.createdAt)}</span>
+                    <span class="tag">${escapeHtml(q.categoryName)}</span>
+                    <span style="color:var(--color-muted);font-size:0.8rem">💬 ${q.answerCount}</span>
+                    <span style="color:var(--color-muted);font-size:0.8rem">▲ ${q.voteTotal}</span>
+                  </div>
+                </div>
+              </div>
+            </a>
+          `).join('');
+        }
+
+        // Stats
+        document.getElementById('stat-questions').textContent = data.total || 0;
+      } catch (err) {
+        document.getElementById('recent-questions').innerHTML = '<div class="empty-state"><p>Could not load questions</p></div>';
+      }
+
+      // Load stats (answers, users, votes from a simple aggregation)
+      try {
+        const tagsData = await api('/tags');
+        // We'll approximate stats from available data
+      } catch {}
+
+      // Load categories
+      try {
+        const catData = await api('/tags/categories');
+        const catGrid = document.getElementById('categories-grid');
+        const catIcons = ['💻','🗄️','🌐','🤖','🌍','🖥️','📐','💡'];
+        catGrid.innerHTML = catData.categories.map((c, i) => `
+          <a href="/questions.html?category=${c.id}" class="glass-card" style="padding:20px;text-decoration:none;display:block;text-align:center">
+            <div style="font-size:2rem;margin-bottom:8px">${catIcons[i % catIcons.length]}</div>
+            <div style="font-weight:600;color:var(--color-text)">${escapeHtml(c.name)}</div>
+          </a>
+        `).join('');
+      } catch {
+        document.getElementById('categories-grid').innerHTML = '<p style="color:var(--color-muted)">Could not load categories</p>';
+      }
+
+      // Approximate other stats
+      try {
+        const statsData = await api('/questions?limit=1');
+        document.getElementById('stat-questions').textContent = statsData.total || 0;
+      } catch {}
+
+      // Contributors placeholder - use questions data
+      document.getElementById('contributors').innerHTML = '<p style="color:var(--color-muted);padding:20px">Join and start contributing!</p>';
+    });
+  </script>
+</body>
+</html>

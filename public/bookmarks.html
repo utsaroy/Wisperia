@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bookmarks — Whisperia</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+  <div id="navbar"></div>
+
+  <main class="page-content" style="max-width:900px;margin:0 auto;padding:32px 24px;position:relative;z-index:1">
+    <h1 style="font-size:1.8rem;font-weight:800;margin-bottom:32px">★ Your Bookmarks</h1>
+    <div id="bookmarks-list" style="display:grid;gap:16px">
+      <div class="loading-overlay"><div class="spinner"></div></div>
+    </div>
+  </main>
+
+  <div id="footer"></div>
+  <script src="/js/app.js"></script>
+  <script src="/js/components/navbar.js"></script>
+  <script src="/js/components/footer.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      renderNavbar(); renderFooter();
+      const user = await getCurrentUser();
+      if (!user) return navigate('/login.html');
+
+      try {
+        const data = await api('/bookmarks');
+        const el = document.getElementById('bookmarks-list');
+        if (data.bookmarks.length === 0) {
+          el.innerHTML = '<div class="empty-state"><h3>No bookmarks yet</h3><p>Save questions to find them later</p></div>';
+          return;
+        }
+        el.innerHTML = data.bookmarks.map(b => `
+          <a href="/question-detail.html?id=${b.questionId}" class="glass-card" style="padding:20px 24px;text-decoration:none;display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <h3 style="font-weight:600;color:var(--color-text);margin-bottom:4px">${escapeHtml(b.title)}</h3>
+              <span style="color:var(--color-muted);font-size:0.85rem">${escapeHtml(b.author)} • ${escapeHtml(b.categoryName)} • 💬 ${b.answerCount}</span>
+            </div>
+            <span style="color:var(--color-warning);font-size:1.2rem">★</span>
+          </a>
+        `).join('');
+      } catch (err) {
+        document.getElementById('bookmarks-list').innerHTML = `<div class="empty-state"><p>${err.message}</p></div>`;
+      }
+    });
+  </script>
+</body>
+</html>

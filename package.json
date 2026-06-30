@@ -1,0 +1,21 @@
+{
+  "name": "whisperia",
+  "version": "1.0.0",
+  "description": "Whisperia - Question Asking & Answering Platform (University DBMS Project)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "express": "^4.21.0",
+    "express-session": "^1.18.0",
+    "express-validator": "^7.2.0",
+    "oracledb": "^6.7.0"
+  },
+  "keywords": ["whisperia", "q&a", "oracle", "dbms"],
+  "author": "Utsa Roy",
+  "license": "MIT"
+}

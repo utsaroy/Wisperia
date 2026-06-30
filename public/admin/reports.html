@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manage Reports — Whisperia Admin</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+  <div id="navbar"></div>
+
+  <main class="page-content" style="max-width:1200px;margin:0 auto;padding:32px 24px;position:relative;z-index:1">
+    <div style="display:flex;gap:8px;margin-bottom:32px;flex-wrap:wrap">
+      <span style="font-size:1.2rem;font-weight:800;margin-right:16px;color:var(--color-warning)">⚡ Admin Panel</span>
+      <a href="/admin/dashboard.html" class="btn-secondary" style="text-decoration:none;padding:8px 16px;font-size:0.85rem">Dashboard</a>
+      <a href="/admin/users.html" class="btn-secondary" style="text-decoration:none;padding:8px 16px;font-size:0.85rem">Users</a>
+      <a href="/admin/reports.html" class="btn-primary" style="text-decoration:none;padding:8px 16px;font-size:0.85rem">Reports</a>
+    </div>
+
+    <h1 style="font-size:1.5rem;font-weight:800;margin-bottom:24px">Content Reports</h1>
+
+    <div id="reports-list" style="display:grid;gap:16px">
+      <div class="loading-overlay"><div class="spinner"></div></div>
+    </div>
+  </main>
+
+  <div id="footer"></div>
+  <script src="/js/app.js"></script>
+  <script src="/js/components/navbar.js"></script>
+  <script src="/js/components/footer.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      renderNavbar(); renderFooter();
+      const user = await getCurrentUser();
+      if (!user || user.role !== 'admin') return navigate('/');
+      await loadReports();
+    });
+
+    async function loadReports() {
+      try {
+        const data = await api('/admin/reports');
+        const el = document.getElementById('reports-list');
+        if (data.reports.length === 0) {
+          el.innerHTML = '<div class="empty-state"><h3>No reports</h3><p>All clear!</p></div>';
+          return;
+        }
+        el.innerHTML = data.reports.map(r => {
+          const statusColors = { pending: 'badge-danger', resolved: 'badge-success', dismissed: 'badge-warning' };
+          const target = r.QUESTIONTITLE ? `Question: "${escapeHtml(r.QUESTIONTITLE)}"` : `Answer: "${escapeHtml(r.ANSWERPREVIEW || '...')}"`;
+          return `
+            <div class="glass-card-static" style="padding:20px 24px">
+              <div style="display:flex;align-items:start;justify-content:space-between;gap:16px;flex-wrap:wrap">
+                <div style="flex:1;min-width:0">
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+                    <span class="badge ${statusColors[r.STATUS]}">${r.STATUS}</span>
+                    <span style="color:var(--color-muted);font-size:0.8rem">Reported by ${escapeHtml(r.REPORTER)} • ${formatDate(r.CREATEDAT)}</span>
+                  </div>
+                  <p style="font-size:0.9rem;color:var(--color-text);margin-bottom:6px"><strong>Target:</strong> ${target}</p>
+                  <p style="font-size:0.9rem;color:var(--color-muted)"><strong>Reason:</strong> ${escapeHtml(r.REASON)}</p>
+                </div>
+                ${r.STATUS === 'pending' ? `
+                  <div style="display:flex;gap:8px;flex-shrink:0">
+                    <button onclick="resolveReport(${r.REPORTID}, 'resolve')" class="btn-danger" style="font-size:0.8rem">Remove Content</button>
+                    <button onclick="resolveReport(${r.REPORTID}, 'dismiss')" class="btn-secondary" style="font-size:0.8rem;padding:8px 12px">Dismiss</button>
+                  </div>
+                ` : ''}
+              </div>
+            </div>`;
+        }).join('');
+      } catch (err) {
+        document.getElementById('reports-list').innerHTML = `<div class="empty-state"><p>${err.message}</p></div>`;
+      }
+    }
+
+    async function resolveReport(id, action) {
+      const msg = action === 'resolve' ? 'This will permanently delete the reported content.' : 'This will dismiss the report.';
+      if (!confirm(msg)) return;
+      try {
+        await api(`/admin/reports/${id}`, { method: 'PUT', body: { action } });
+        showToast(`Report ${action === 'resolve' ? 'resolved' : 'dismissed'}`, 'success');
+        await loadReports();
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+  </script>
+</body>
+</html>

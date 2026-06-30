@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manage Users — Whisperia Admin</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+  <div id="navbar"></div>
+
+  <main class="page-content" style="max-width:1200px;margin:0 auto;padding:32px 24px;position:relative;z-index:1">
+    <div style="display:flex;gap:8px;margin-bottom:32px;flex-wrap:wrap">
+      <span style="font-size:1.2rem;font-weight:800;margin-right:16px;color:var(--color-warning)">⚡ Admin Panel</span>
+      <a href="/admin/dashboard.html" class="btn-secondary" style="text-decoration:none;padding:8px 16px;font-size:0.85rem">Dashboard</a>
+      <a href="/admin/users.html" class="btn-primary" style="text-decoration:none;padding:8px 16px;font-size:0.85rem">Users</a>
+      <a href="/admin/reports.html" class="btn-secondary" style="text-decoration:none;padding:8px 16px;font-size:0.85rem">Reports</a>
+    </div>
+
+    <h1 style="font-size:1.5rem;font-weight:800;margin-bottom:24px">Manage Users</h1>
+
+    <div class="glass-card-static" style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:0.9rem" id="users-table">
+        <thead>
+          <tr style="border-bottom:2px solid var(--color-border)">
+            <th style="text-align:left;padding:16px;color:var(--color-muted);font-weight:600;text-transform:uppercase;font-size:0.75rem">User</th>
+            <th style="text-align:left;padding:16px;color:var(--color-muted);font-weight:600;text-transform:uppercase;font-size:0.75rem">Email</th>
+            <th style="text-align:center;padding:16px;color:var(--color-muted);font-weight:600;text-transform:uppercase;font-size:0.75rem">Role</th>
+            <th style="text-align:center;padding:16px;color:var(--color-muted);font-weight:600;text-transform:uppercase;font-size:0.75rem">Questions</th>
+            <th style="text-align:center;padding:16px;color:var(--color-muted);font-weight:600;text-transform:uppercase;font-size:0.75rem">Answers</th>
+            <th style="text-align:center;padding:16px;color:var(--color-muted);font-weight:600;text-transform:uppercase;font-size:0.75rem">Joined</th>
+            <th style="text-align:center;padding:16px;color:var(--color-muted);font-weight:600;text-transform:uppercase;font-size:0.75rem">Action</th>
+          </tr>
+        </thead>
+        <tbody id="users-body">
+          <tr><td colspan="7" style="padding:40px;text-align:center"><div class="spinner" style="margin:0 auto"></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <div id="footer"></div>
+  <script src="/js/app.js"></script>
+  <script src="/js/components/navbar.js"></script>
+  <script src="/js/components/footer.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      renderNavbar(); renderFooter();
+      const user = await getCurrentUser();
+      if (!user || user.role !== 'admin') return navigate('/');
+      await loadUsers();
+    });
+
+    async function loadUsers() {
+      try {
+        const data = await api('/admin/users');
+        const tbody = document.getElementById('users-body');
+        tbody.innerHTML = data.users.map(u => `
+          <tr style="border-bottom:1px solid var(--color-border)">
+            <td style="padding:14px 16px">
+              <div style="display:flex;align-items:center;gap:10px">
+                ${createAvatar(u.USERNAME, 32)}
+                <span style="font-weight:600">${escapeHtml(u.USERNAME)}</span>
+              </div>
+            </td>
+            <td style="padding:14px 16px;color:var(--color-muted)">${escapeHtml(u.EMAIL)}</td>
+            <td style="padding:14px 16px;text-align:center">
+              <span class="badge ${u.ROLE === 'admin' ? 'badge-warning' : 'badge-primary'}">${u.ROLE}</span>
+            </td>
+            <td style="padding:14px 16px;text-align:center;color:var(--color-primary);font-weight:600">${u.QUESTIONSASKED}</td>
+            <td style="padding:14px 16px;text-align:center;color:#06b6d4;font-weight:600">${u.ANSWERSPOSTED}</td>
+            <td style="padding:14px 16px;text-align:center;color:var(--color-muted);font-size:0.85rem">${formatDate(u.JOINDATE)}</td>
+            <td style="padding:14px 16px;text-align:center">
+              ${u.ROLE !== 'admin' ? `<button onclick="deleteUser(${u.USERID})" class="btn-danger" style="font-size:0.8rem;padding:6px 12px">Delete</button>` : '<span style="color:var(--color-muted);font-size:0.8rem">—</span>'}
+            </td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        document.getElementById('users-body').innerHTML = `<tr><td colspan="7" style="padding:40px;text-align:center;color:var(--color-danger)">${err.message}</td></tr>`;
+      }
+    }
+
+    async function deleteUser(id) {
+      if (!confirm('Delete this user? All their questions, answers, and votes will also be deleted.')) return;
+      try {
+        await api(`/admin/users/${id}`, { method: 'DELETE' });
+        showToast('User deleted', 'success');
+        await loadUsers();
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+  </script>
+</body>
+</html>

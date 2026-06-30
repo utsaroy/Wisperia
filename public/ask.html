@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ask a Question — Whisperia</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+  <div id="navbar"></div>
+
+  <main class="page-content" style="max-width:800px;margin:0 auto;padding:32px 24px;position:relative;z-index:1">
+    <h1 style="font-size:1.8rem;font-weight:800;margin-bottom:32px">Ask a Question</h1>
+
+    <form id="ask-form" class="glass-card-static" style="padding:32px;display:flex;flex-direction:column;gap:24px">
+      <div>
+        <label class="form-label">Title</label>
+        <input type="text" id="title" class="form-input" placeholder="What's your question? Be specific." required minlength="5" maxlength="300">
+        <p style="color:var(--color-muted);font-size:0.75rem;margin-top:4px">Be specific and imagine you're asking a question to another person</p>
+      </div>
+
+      <div>
+        <label class="form-label">Description</label>
+        <textarea id="description" class="form-input" placeholder="Include all the information someone would need to answer your question..." required minlength="10" style="min-height:200px"></textarea>
+      </div>
+
+      <div>
+        <label class="form-label">Category</label>
+        <select id="category" class="form-input" required>
+          <option value="">Select a category</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="form-label">Tags (optional)</label>
+        <div id="tags-container" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px"></div>
+        <div id="tag-options" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+      </div>
+
+      <div id="error-msg" style="color:var(--color-danger);font-size:0.85rem;display:none"></div>
+
+      <button type="submit" class="btn-primary" style="align-self:flex-start;padding:14px 32px" id="submit-btn">
+        Post Question
+      </button>
+    </form>
+  </main>
+
+  <div id="footer"></div>
+  <script src="/js/app.js"></script>
+  <script src="/js/components/navbar.js"></script>
+  <script src="/js/components/footer.js"></script>
+  <script>
+    let selectedTags = [];
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      renderNavbar(); renderFooter();
+      const user = await getCurrentUser();
+      if (!user) { showToast('Please log in to ask a question', 'error'); return navigate('/login.html'); }
+
+      // Load categories
+      try {
+        const catData = await api('/tags/categories');
+        const sel = document.getElementById('category');
+        catData.categories.forEach(c => {
+          sel.innerHTML += `<option value="${c.id}">${escapeHtml(c.name)}</option>`;
+        });
+      } catch {}
+
+      // Load tags
+      try {
+        const tagData = await api('/tags');
+        const container = document.getElementById('tag-options');
+        tagData.tags.forEach(t => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'tag';
+          btn.textContent = t.name;
+          btn.dataset.id = t.id;
+          btn.onclick = () => toggleTag(t.id, t.name, btn);
+          container.appendChild(btn);
+        });
+      } catch {}
+    });
+
+    function toggleTag(id, name, btn) {
+      const idx = selectedTags.indexOf(id);
+      if (idx > -1) {
+        selectedTags.splice(idx, 1);
+        btn.style.background = 'rgba(139,92,246,0.15)';
+        btn.style.color = '#a78bfa';
+      } else {
+        if (selectedTags.length >= 5) return showToast('Max 5 tags', 'error');
+        selectedTags.push(id);
+        btn.style.background = 'var(--color-primary)';
+        btn.style.color = 'white';
+      }
+    }
+
+    document.getElementById('ask-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('submit-btn');
+      const errEl = document.getElementById('error-msg');
+      btn.disabled = true; btn.textContent = 'Posting...';
+      errEl.style.display = 'none';
+
+      try {
+        const data = await api('/questions', {
+          method: 'POST',
+          body: {
+            title: document.getElementById('title').value,
+            description: document.getElementById('description').value,
+            categoryId: document.getElementById('category').value,
+            tagIds: selectedTags
+          }
+        });
+        showToast('Question posted!', 'success');
+        setTimeout(() => navigate(`/question-detail.html?id=${data.questionId}`), 500);
+      } catch (err) {
+        errEl.textContent = err.message;
+        errEl.style.display = 'block';
+        btn.disabled = false; btn.textContent = 'Post Question';
+      }
+    });
+  </script>
+</body>
+</html>

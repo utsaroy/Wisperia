@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard — Whisperia</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+  <div id="navbar"></div>
+
+  <main class="page-content" style="max-width:1200px;margin:0 auto;padding:32px 24px;position:relative;z-index:1">
+    <!-- Admin Nav -->
+    <div style="display:flex;gap:8px;margin-bottom:32px;flex-wrap:wrap">
+      <span style="font-size:1.2rem;font-weight:800;margin-right:16px;color:var(--color-warning)">⚡ Admin Panel</span>
+      <a href="/admin/dashboard.html" class="btn-primary" style="text-decoration:none;padding:8px 16px;font-size:0.85rem">Dashboard</a>
+      <a href="/admin/users.html" class="btn-secondary" style="text-decoration:none;padding:8px 16px;font-size:0.85rem">Users</a>
+      <a href="/admin/reports.html" class="btn-secondary" style="text-decoration:none;padding:8px 16px;font-size:0.85rem">Reports</a>
+    </div>
+
+    <div id="dashboard-content">
+      <div class="loading-overlay"><div class="spinner"></div></div>
+    </div>
+  </main>
+
+  <div id="footer"></div>
+  <script src="/js/app.js"></script>
+  <script src="/js/components/navbar.js"></script>
+  <script src="/js/components/footer.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      renderNavbar(); renderFooter();
+      const user = await getCurrentUser();
+      if (!user || user.role !== 'admin') { showToast('Admin access required', 'error'); return navigate('/'); }
+
+      try {
+        const data = await api('/admin/dashboard');
+        const s = data.stats;
+        document.getElementById('dashboard-content').innerHTML = `
+          <!-- Stats -->
+          <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin-bottom:32px">
+            <div class="glass-card-static stat-card"><div style="font-size:1.8rem;font-weight:700;color:var(--color-primary)">${s.TOTALUSERS}</div><div class="stat-label">Users</div></div>
+            <div class="glass-card-static stat-card"><div style="font-size:1.8rem;font-weight:700;color:#06b6d4">${s.TOTALQUESTIONS}</div><div class="stat-label">Questions</div></div>
+            <div class="glass-card-static stat-card"><div style="font-size:1.8rem;font-weight:700;color:#22c55e">${s.TOTALANSWERS}</div><div class="stat-label">Answers</div></div>
+            <div class="glass-card-static stat-card"><div style="font-size:1.8rem;font-weight:700;color:#f59e0b">${s.TOTALVOTES}</div><div class="stat-label">Votes</div></div>
+            <div class="glass-card-static stat-card"><div style="font-size:1.8rem;font-weight:700;color:var(--color-danger)">${s.PENDINGREPORTS}</div><div class="stat-label">Pending Reports</div></div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+            <!-- Top Contributors -->
+            <div class="glass-card-static" style="padding:24px">
+              <h3 style="font-size:1.1rem;font-weight:700;margin-bottom:16px">Top Contributors</h3>
+              ${data.topContributors.map((c, i) => `
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;${i > 0 ? 'border-top:1px solid var(--color-border)' : ''}">
+                  <div style="display:flex;align-items:center;gap:10px">
+                    <span style="color:var(--color-muted);font-size:0.85rem;width:20px">#${i+1}</span>
+                    ${createAvatar(c.USERNAME, 28)}
+                    <span style="font-weight:500">${escapeHtml(c.USERNAME)}</span>
+                  </div>
+                  <span style="color:var(--color-primary);font-weight:600">${c.TOTALCONTRIBUTIONS}</span>
+                </div>
+              `).join('')}
+            </div>
+
+            <!-- Category Statistics -->
+            <div class="glass-card-static" style="padding:24px">
+              <h3 style="font-size:1.1rem;font-weight:700;margin-bottom:16px">Category Statistics</h3>
+              ${data.categoryStats.map((c, i) => `
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;${i > 0 ? 'border-top:1px solid var(--color-border)' : ''}">
+                  <span style="font-weight:500">${escapeHtml(c.CATEGORYNAME)}</span>
+                  <div style="display:flex;gap:16px;font-size:0.85rem">
+                    <span style="color:var(--color-primary)">${c.QUESTIONCOUNT} Q</span>
+                    <span style="color:#06b6d4">${c.TOTALANSWERS} A</span>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+
+            <!-- Popular Tags -->
+            <div class="glass-card-static" style="padding:24px">
+              <h3 style="font-size:1.1rem;font-weight:700;margin-bottom:16px">Popular Tags</h3>
+              <div style="display:flex;flex-wrap:wrap;gap:8px">
+                ${data.popularTags.map(t => `
+                  <span class="tag">${escapeHtml(t.TAGNAME)} <span style="opacity:0.6;margin-left:4px">${t.USAGECOUNT}</span></span>
+                `).join('')}
+              </div>
+            </div>
+
+            <!-- Monthly Activity -->
+            <div class="glass-card-static" style="padding:24px">
+              <h3 style="font-size:1.1rem;font-weight:700;margin-bottom:16px">Monthly Questions</h3>
+              ${data.monthlyQuestions.map((m, i) => `
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;${i > 0 ? 'border-top:1px solid var(--color-border)' : ''}">
+                  <span style="color:var(--color-muted);font-size:0.9rem">${m.YEAR}-${String(m.MONTH).padStart(2,'0')}</span>
+                  <div style="display:flex;align-items:center;gap:8px">
+                    <div style="background:var(--color-primary);height:8px;border-radius:4px;width:${Math.max(m.QUESTIONCOUNT * 20, 20)}px"></div>
+                    <span style="font-weight:600">${m.QUESTIONCOUNT}</span>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+          <!-- Manage Categories -->
+          <div class="glass-card-static" style="padding:24px;margin-top:24px">
+            <h3 style="font-size:1.1rem;font-weight:700;margin-bottom:16px">Manage Categories</h3>
+            <div style="display:flex;gap:12px;margin-bottom:16px">
+              <input type="text" id="new-category" class="form-input" placeholder="New category name" style="max-width:300px">
+              <button onclick="addCategory()" class="btn-primary">Add</button>
+            </div>
+            <div id="categories-list"></div>
+          </div>
+        `;
+        await loadCategories();
+      } catch (err) {
+        document.getElementById('dashboard-content').innerHTML = `<div class="empty-state"><h3>Error loading dashboard</h3><p>${err.message}</p></div>`;
+      }
+    });
+
+    async function loadCategories() {
+      const data = await api('/admin/categories');
+      document.getElementById('categories-list').innerHTML = data.categories.map(c => `
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-top:1px solid var(--color-border)">
+          <span>${escapeHtml(c.CATEGORYNAME)} <span style="color:var(--color-muted);font-size:0.8rem">(${c.QUESTIONCOUNT} questions)</span></span>
+          <button onclick="deleteCategory(${c.CATEGORYID})" class="btn-ghost" style="color:var(--color-danger);font-size:0.8rem">Delete</button>
+        </div>
+      `).join('');
+    }
+
+    async function addCategory() {
+      const name = document.getElementById('new-category').value.trim();
+      if (!name) return;
+      try {
+        await api('/admin/categories', { method: 'POST', body: { name } });
+        showToast('Category added', 'success');
+        document.getElementById('new-category').value = '';
+        await loadCategories();
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    async function deleteCategory(id) {
+      if (!confirm('Delete this category? Questions in it will also be deleted.')) return;
+      try {
+        await api(`/admin/categories/${id}`, { method: 'DELETE' });
+        showToast('Category deleted', 'success');
+        await loadCategories();
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+  </script>
+</body>
+</html>
